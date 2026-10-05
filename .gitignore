@@ -1,0 +1,4 @@
+node_modules/
+newman/
+newman-report.html
+*.log
