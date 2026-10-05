@@ -1,0 +1,54 @@
+name: Ticket Desk API regression
+
+on:
+  push:
+  pull_request:
+
+jobs:
+  api-tests:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check out API test project
+        uses: actions/checkout@v4
+      - name: Check out Ticket Desk API
+        uses: actions/checkout@v4
+        with:
+          repository: Mahipatel04/Ticket-Desk
+          path: target-api
+      - name: Set up .NET
+        uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: 10.0.x
+      - name: Start SQL Server
+        working-directory: target-api
+        run: docker compose up -d sqlserver
+      - name: Wait for SQL Server
+        run: |
+          for attempt in $(seq 1 60); do
+            if docker exec ticket-desk-sql bash -lc 'cat < /dev/null > /dev/tcp/127.0.0.1/1433' 2>/dev/null; then
+              sleep 5
+              exit 0
+            fi
+            sleep 2
+          done
+          docker logs ticket-desk-sql
+          exit 1
+      - name: Build API
+        run: dotnet build target-api/api/api.csproj --configuration Release
+      - name: Start API
+        run: |
+          ASPNETCORE_ENVIRONMENT=Development dotnet run --project target-api/api/api.csproj --configuration Release --no-build > api.log 2>&1 &
+          for attempt in $(seq 1 60); do
+            if curl --fail --silent http://localhost:5080/health; then
+              exit 0
+            fi
+            sleep 2
+          done
+          cat api.log
+          exit 1
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+      - name: Run API regression suite
+        run: npm test
