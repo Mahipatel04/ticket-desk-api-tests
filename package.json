@@ -1,0 +1,9 @@
+{
+  "name": "ticket-desk-api-tests",
+  "version": "1.0.0",
+  "private": true,
+  "description": "Automated API checks for the Ticket Desk portfolio API",
+  "scripts": {
+    "test": "node scripts/run-tests.mjs"
+  }
+}
